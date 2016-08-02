@@ -151,6 +151,10 @@ public:
     double bandpass(double input,double cutoff1, double resonance);
     double lopass(double input,double cutoff);
     double hipass(double input,double cutoff);
+    //new
+    double lowShelf(double input, double gain, double cutoff, double slope);
+    double highShelf(double input, double gain, double cutoff, double slope);
+    double peakingEQ(double input, double gain, double freq, double resonance);
     
 };
 

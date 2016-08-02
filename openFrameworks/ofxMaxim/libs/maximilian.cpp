@@ -487,6 +487,70 @@ double maxiFilter::bandpass(double input,double cutoff1, double resonance) {
     return(output);
 }
 
+//new
+double maxiFilter::lowShelf(double input, double gain, double cutoff, double slope){
+    double A = pow(10, gain / 40.0);
+    double w0 = TWOPI * cutoff / maxiSettings::sampleRate;
+    double alpha = sin(w0)/2 * sqrt( (A + 1/A)*(1/slope - 1) + 2 );
+    
+    float b0 =    A*( (A+1) - (A-1)*cos(w0) + 2*sqrt(A)*alpha );
+    float b1 =  2*A*( (A-1) - (A+1)*cos(w0)                   );
+    float b2 =    A*( (A+1) - (A-1)*cos(w0) - 2*sqrt(A)*alpha );
+    float a0 =        (A+1) + (A-1)*cos(w0) + 2*sqrt(A)*alpha;
+    float a1 =   -2*( (A-1) + (A+1)*cos(w0)                   );
+    float a2 =        (A+1) + (A-1)*cos(w0) - 2*sqrt(A)*alpha;
+    
+    output = (b0/a0)*input + (b1/a0)*inputs[1] + (b2/a0)*inputs[2]
+    - (a1/a0)*outputs[1] - (a2/a0)*outputs[2];
+    
+    outputs[2] = outputs[1]; outputs[1] = output;
+    inputs[2] = inputs[1]; inputs[1] = input;
+    
+    return output;
+}
+
+double maxiFilter::highShelf(double input, double gain, double cutoff, double slope){
+    double A = pow(10, gain / 40.0);
+    double w0 = TWOPI * cutoff / maxiSettings::sampleRate;
+    double alpha = sin(w0)/2 * sqrt( (A + 1/A)*(1/slope - 1) + 2 );
+    
+    float b0 =    A*( (A+1) + (A-1)*cos(w0) + 2*sqrt(A)*alpha );
+    float b1 = -2*A*( (A-1) + (A+1)*cos(w0)                   );
+    float b2 =    A*( (A+1) + (A-1)*cos(w0) - 2*sqrt(A)*alpha );
+    float a0 =        (A+1) - (A-1)*cos(w0) + 2*sqrt(A)*alpha;
+    float a1 =    2*( (A-1) - (A+1)*cos(w0)                   );
+    float a2 =        (A+1) - (A-1)*cos(w0) - 2*sqrt(A)*alpha;
+    
+    output = (b0/a0)*input + (b1/a0)*inputs[1] + (b2/a0)*inputs[2]
+    - (a1/a0)*outputs[1] - (a2/a0)*outputs[2];
+    
+    outputs[2] = outputs[1]; outputs[1] = output;
+    inputs[2] = inputs[1]; inputs[1] = input;
+    
+    return output;
+}
+
+double maxiFilter::peakingEQ(double input, double gain, double freq, double resonance){
+    double A = pow(10, gain / 40.0);
+    double w0 = TWOPI * freq / maxiSettings::sampleRate;
+    double alpha = sin(w0)/(2*resonance);
+    
+    float b0 =   1 + alpha*A;
+    float b1 =  -2*cos(w0);
+    float b2 =   1 - alpha*A;
+    float a0 =   1 + alpha/A;
+    float a1 =  -2*cos(w0);
+    float a2 =   1 - alpha/A;
+    
+    output = (b0/a0)*input + (b1/a0)*inputs[1] + (b2/a0)*inputs[2]
+    - (a1/a0)*outputs[1] - (a2/a0)*outputs[2];
+    
+    outputs[2] = outputs[1]; outputs[1] = output;
+    inputs[2] = inputs[1]; inputs[1] = input;
+    
+    return output;
+}
+
 //stereo bus
 double *maxiMix::stereo(double input,double two[2],double x) {
     if (x>1) x=1;
