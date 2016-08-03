@@ -487,6 +487,207 @@ double maxiFilter::bandpass(double input,double cutoff1, double resonance) {
     return(output);
 }
 
+//new
+double maxiFilter::loshelf(double input, double gain, double cutoff, double slope){
+    double A = pow(10, gain / 40.0);
+    double w0 = TWOPI * cutoff / maxiSettings::sampleRate;
+    double alpha = sin(w0)/2 * sqrt( (A + 1/A)*(1/slope - 1) + 2 );
+    
+    float b0 =    A*( (A+1) - (A-1)*cos(w0) + 2*sqrt(A)*alpha );
+    float b1 =  2*A*( (A-1) - (A+1)*cos(w0)                   );
+    float b2 =    A*( (A+1) - (A-1)*cos(w0) - 2*sqrt(A)*alpha );
+    float a0 =        (A+1) + (A-1)*cos(w0) + 2*sqrt(A)*alpha;
+    float a1 =   -2*( (A-1) + (A+1)*cos(w0)                   );
+    float a2 =        (A+1) + (A-1)*cos(w0) - 2*sqrt(A)*alpha;
+    
+    output = (b0/a0)*input + (b1/a0)*inputs[1] + (b2/a0)*inputs[2]
+    - (a1/a0)*outputs[1] - (a2/a0)*outputs[2];
+    
+    outputs[2] = outputs[1]; outputs[1] = output;
+    inputs[2] = inputs[1]; inputs[1] = input;
+    
+    return output;
+}
+
+double maxiFilter::hishelf(double input, double gain, double cutoff, double slope){
+    double A = pow(10, gain / 40.0);
+    double w0 = TWOPI * cutoff / maxiSettings::sampleRate;
+    double alpha = sin(w0)/2 * sqrt( (A + 1/A)*(1/slope - 1) + 2 );
+    
+    float b0 =    A*( (A+1) + (A-1)*cos(w0) + 2*sqrt(A)*alpha );
+    float b1 = -2*A*( (A-1) + (A+1)*cos(w0)                   );
+    float b2 =    A*( (A+1) + (A-1)*cos(w0) - 2*sqrt(A)*alpha );
+    float a0 =        (A+1) - (A-1)*cos(w0) + 2*sqrt(A)*alpha;
+    float a1 =    2*( (A-1) - (A+1)*cos(w0)                   );
+    float a2 =        (A+1) - (A-1)*cos(w0) - 2*sqrt(A)*alpha;
+    
+    output = (b0/a0)*input + (b1/a0)*inputs[1] + (b2/a0)*inputs[2]
+    - (a1/a0)*outputs[1] - (a2/a0)*outputs[2];
+    
+    outputs[2] = outputs[1]; outputs[1] = output;
+    inputs[2] = inputs[1]; inputs[1] = input;
+    
+    return output;
+}
+
+double maxiFilter::peakingEQ(double input, double gain, double freq, double resonance){
+    double A = pow(10, gain / 40.0);
+    double w0 = TWOPI * freq / maxiSettings::sampleRate;
+    double alpha = sin(w0)/(2*resonance);
+    
+    float b0 =   1 + alpha*A;
+    float b1 =  -2*cos(w0);
+    float b2 =   1 - alpha*A;
+    float a0 =   1 + alpha/A;
+    float a1 =  -2*cos(w0);
+    float a2 =   1 - alpha/A;
+    
+    output = (b0/a0)*input + (b1/a0)*inputs[1] + (b2/a0)*inputs[2]
+    - (a1/a0)*outputs[1] - (a2/a0)*outputs[2];
+    
+    outputs[2] = outputs[1]; outputs[1] = output;
+    inputs[2] = inputs[1]; inputs[1] = input;
+    
+    return output;
+}
+
+double maxiFilter::LRlopass(double input, double cutoff){
+    double wc = TWOPI * cutoff;
+    double wc2 = wc * wc;
+    double wc3 = wc2 * wc;
+    double wc4 = wc2 * wc2;
+    
+    double k = wc/tan(PI*cutoff/maxiSettings::sampleRate);
+    double k2 = k * k;
+    double k3 = k2 * k;
+    double k4 = k2 * k2;
+    double sqrt2 = sqrt(2);
+    double sq_tmp1 = sqrt2 * wc3 * k;
+    double sq_tmp2 = sqrt2 * wc * k3;
+    double A = 4 * wc2 * k2 + 2 * sq_tmp1 + k4 + 2 * sq_tmp2 + wc4;
+    
+    double b1 = (4 * (wc4 + sq_tmp1 - k4 - sq_tmp2)) / A;
+    double b2 = (6 * wc4 - 8 * wc2 * k2 + 6 * k4) / A;
+    double b3 = (4 * (wc4 - sq_tmp1 + sq_tmp2 - k4)) / A;
+    double b4 = (k4 - 2 * sq_tmp1 + wc4 - 2 * sq_tmp2 + 4 * wc2 * k2) / A;
+    
+    double a0 = wc4 / A;
+    double a1 = 4 * wc4 / A;
+    double a2 = 6 * wc4 / A;
+    double a3 = a1;
+    double a4 = a0;
+    
+    output = a0 * input + a1 * inputs[1] + a2 * inputs[2] + a3 * inputs[3] + a4 * inputs[4]
+    - b1 * outputs[1] - b2 * outputs[2] - b3 * outputs[3] - b4 * outputs[4];
+    
+    outputs[4] = outputs[3]; outputs[3] = outputs[2]; outputs[2] = outputs[1]; outputs[1] = output;
+    inputs[4] = inputs[3]; inputs[3] = inputs[2]; inputs[2] = inputs[1]; inputs[1] = input;
+    
+    return output;
+}
+
+double maxiFilter::LRhipass(double input, double cutoff){
+    double wc = TWOPI * cutoff;
+    double wc2 = wc * wc;
+    double wc3 = wc2 * wc;
+    double wc4 = wc2 * wc2;
+    
+    double k = wc/tan(PI*cutoff/maxiSettings::sampleRate);
+    double k2 = k * k;
+    double k3 = k2 * k;
+    double k4 = k2 * k2;
+    double sqrt2 = sqrt(2);
+    double sq_tmp1 = sqrt2 * wc3 * k;
+    double sq_tmp2 = sqrt2 * wc * k3;
+    double A = 4 * wc2 * k2 + 2 * sq_tmp1 + k4 + 2 * sq_tmp2 + wc4;
+    
+    double b1 = (4 * (wc4 + sq_tmp1 - k4 - sq_tmp2)) / A;
+    double b2 = (6 * wc4 - 8 * wc2 * k2 + 6 * k4) / A;
+    double b3 = (4 * (wc4 - sq_tmp1 + sq_tmp2 - k4)) / A;
+    double b4 = (k4 - 2 * sq_tmp1 + wc4 - 2 * sq_tmp2 + 4 * wc2 * k2) / A;
+    
+    double a0 = k4 / A;
+    double a1 = - 4 * k4 / A;
+    double a2 = 6 * k4 / A;
+    double a3 = a1;
+    double a4 = a0;
+    
+    output = a0 * input + a1 * inputs[1] + a2 * inputs[2] + a3 * inputs[3] + a4 * inputs[4]
+    - b1 * outputs[1] - b2 * outputs[2] - b3 * outputs[3] - b4 * outputs[4];
+    
+    outputs[4] = outputs[3]; outputs[3] = outputs[2]; outputs[2] = outputs[1]; outputs[1] = output;
+    inputs[4] = inputs[3]; inputs[3] = inputs[2]; inputs[2] = inputs[1]; inputs[1] = input;
+    
+    return output;
+}
+
+double maxiFilter::LRbandpass(double input, double cutoff1, double cutoff2){
+    //LOWPASS
+    double wc = TWOPI * cutoff2;
+    double wc2 = wc * wc;
+    double wc3 = wc2 * wc;
+    double wc4 = wc2 * wc2;
+    
+    double k = wc/tan(PI*cutoff2/maxiSettings::sampleRate);
+    double k2 = k * k;
+    double k3 = k2 * k;
+    double k4 = k2 * k2;
+    double sqrt2 = sqrt(2);
+    double sq_tmp1 = sqrt2 * wc3 * k;
+    double sq_tmp2 = sqrt2 * wc * k3;
+    double A = 4 * wc2 * k2 + 2 * sq_tmp1 + k4 + 2 * sq_tmp2 + wc4;
+    
+    double b1 = (4 * (wc4 + sq_tmp1 - k4 - sq_tmp2)) / A;
+    double b2 = (6 * wc4 - 8 * wc2 * k2 + 6 * k4) / A;
+    double b3 = (4 * (wc4 - sq_tmp1 + sq_tmp2 - k4)) / A;
+    double b4 = (k4 - 2 * sq_tmp1 + wc4 - 2 * sq_tmp2 + 4 * wc2 * k2) / A;
+    
+    double a0 = wc4 / A;
+    double a1 = 4 * wc4 / A;
+    double a2 = 6 * wc4 / A;
+    double a3 = a1;
+    double a4 = a0;
+    
+    double outputB = a0 * input + a1 * inputs[1] + a2 * inputs[2] + a3 * inputs[3] + a4 * inputs[4]
+    - b1 * outputs[1] - b2 * outputs[2] - b3 * outputs[3] - b4 * outputs[4];
+    
+    outputs[4] = outputs[3]; outputs[3] = outputs[2]; outputs[2] = outputs[1]; outputs[1] = outputB;
+    inputs[4] = inputs[3]; inputs[3] = inputs[2]; inputs[2] = inputs[1]; inputs[1] = input;
+    
+    //HIGHPASS here we're cheating and using positions from 5 in inputs and outputs arrays (5 <- 0)
+    wc = TWOPI * cutoff1;
+    wc2 = wc * wc;
+    wc3 = wc2 * wc;
+    wc4 = wc2 * wc2;
+    
+    k = wc/tan(PI*cutoff1/maxiSettings::sampleRate);
+    k2 = k * k;
+    k3 = k2 * k;
+    k4 = k2 * k2;
+    sq_tmp1 = sqrt2 * wc3 * k;
+    sq_tmp2 = sqrt2 * wc * k3;
+    A = 4 * wc2 * k2 + 2 * sq_tmp1 + k4 + 2 * sq_tmp2 + wc4;
+    
+    b1 = (4 * (wc4 + sq_tmp1 - k4 - sq_tmp2)) / A;
+    b2 = (6 * wc4 - 8 * wc2 * k2 + 6 * k4) / A;
+    b3 = (4 * (wc4 - sq_tmp1 + sq_tmp2 - k4)) / A;
+    b4 = (k4 - 2 * sq_tmp1 + wc4 - 2 * sq_tmp2 + 4 * wc2 * k2) / A;
+    
+    a0 = k4 / A;
+    a1 = - 4 * k4 / A;
+    a2 = 6 * k4 / A;
+    a3 = a1;
+    a4 = a0;
+    
+    output = a0 * outputB + a1 * inputs[6] + a2 * inputs[7] + a3 * inputs[8] + a4 * inputs[9]
+    - b1 * outputs[6] - b2 * outputs[7] - b3 * outputs[8] - b4 * outputs[9];
+    
+    outputs[9] = outputs[8]; outputs[8] = outputs[7]; outputs[7] = outputs[6]; outputs[6] = output;
+    inputs[9] = inputs[8]; inputs[8] = inputs[7]; inputs[7] = inputs[6]; inputs[6] = outputB;
+    
+    return output;
+}
+
 //stereo bus
 double *maxiMix::stereo(double input,double two[2],double x) {
     if (x>1) x=1;

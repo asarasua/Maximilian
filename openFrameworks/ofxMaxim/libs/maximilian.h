@@ -151,7 +151,13 @@ public:
     double bandpass(double input,double cutoff1, double resonance);
     double lopass(double input,double cutoff);
     double hipass(double input,double cutoff);
-    
+    //new
+    double loshelf(double input, double gain, double cutoff, double slope);
+    double hishelf(double input, double gain, double cutoff, double slope);
+    double peakingEQ(double input, double gain, double freq, double resonance);
+    double LRlopass(double input, double cutoff);
+    double LRhipass(double input, double cutoff);
+    double LRbandpass(double input, double cutoff1, double cutoff2);
 };
 
 class maxiMix  {
