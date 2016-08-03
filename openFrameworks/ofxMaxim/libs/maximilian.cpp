@@ -488,7 +488,11 @@ double maxiFilter::bandpass(double input,double cutoff1, double resonance) {
 }
 
 //new
+<<<<<<< HEAD
 double maxiFilter::loshelf(double input, double gain, double cutoff, double slope){
+=======
+double maxiFilter::lowShelf(double input, double gain, double cutoff, double slope){
+>>>>>>> 01d1ac3e5ed9290bf5a77b1d35d740d37700f076
     double A = pow(10, gain / 40.0);
     double w0 = TWOPI * cutoff / maxiSettings::sampleRate;
     double alpha = sin(w0)/2 * sqrt( (A + 1/A)*(1/slope - 1) + 2 );
@@ -509,7 +513,11 @@ double maxiFilter::loshelf(double input, double gain, double cutoff, double slop
     return output;
 }
 
+<<<<<<< HEAD
 double maxiFilter::hishelf(double input, double gain, double cutoff, double slope){
+=======
+double maxiFilter::highShelf(double input, double gain, double cutoff, double slope){
+>>>>>>> 01d1ac3e5ed9290bf5a77b1d35d740d37700f076
     double A = pow(10, gain / 40.0);
     double w0 = TWOPI * cutoff / maxiSettings::sampleRate;
     double alpha = sin(w0)/2 * sqrt( (A + 1/A)*(1/slope - 1) + 2 );
@@ -551,6 +559,7 @@ double maxiFilter::peakingEQ(double input, double gain, double freq, double reso
     return output;
 }
 
+<<<<<<< HEAD
 double maxiFilter::LRlopass(double input, double cutoff){
     double wc = TWOPI * cutoff;
     double wc2 = wc * wc;
@@ -688,6 +697,8 @@ double maxiFilter::LRbandpass(double input, double cutoff1, double cutoff2){
     return output;
 }
 
+=======
+>>>>>>> 01d1ac3e5ed9290bf5a77b1d35d740d37700f076
 //stereo bus
 double *maxiMix::stereo(double input,double two[2],double x) {
     if (x>1) x=1;
