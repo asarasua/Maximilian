@@ -487,7 +487,7 @@ double maxiFilter::bandpass(double input,double cutoff1, double resonance) {
     return(output);
 }
 
-//new
+//asarasua - beg
 double maxiFilter::loshelf(double input, double gain, double cutoff, double slope){
     double A = pow(10, gain / 40.0);
     double w0 = TWOPI * cutoff / maxiSettings::sampleRate;
@@ -687,6 +687,7 @@ double maxiFilter::LRbandpass(double input, double cutoff1, double cutoff2){
     
     return output;
 }
+//asarasua - end
 
 //stereo bus
 double *maxiMix::stereo(double input,double two[2],double x) {
@@ -1455,30 +1456,102 @@ double maxiDyn::compress(double input) {
         holdcount=0;
         releasephase=0;
         attackphase=1;
-        if(currentRatio==0) currentRatio=ratio;
+        if(currentRatio==0) currentRatio=0.01;
     }
     
-    if (attackphase==1 && currentRatio<ratio-1) {
+    if (attackphase==1 && currentRatio < ratio) {
         currentRatio*=(1+attack);
     }
     
-    if (currentRatio>=ratio-1) {
+    if (currentRatio>=ratio) {
         attackphase=0;
-        releasephase=1;
+        //releasephase=1;
     }
     
-    if (releasephase==1 && currentRatio>0.) {
+    if (fabs(input) < threshold && releasephase!=1) {
+        releasephase=1;
+        attackphase=0;
+    }
+    
+    if (releasephase==1 && currentRatio>0.01) {
         currentRatio*=release;
     }
     
-    if (input>0.) {
-        output = input/(1.+currentRatio);
-    } else {
-        output = input/(1.+currentRatio);
+//    if (input>0.) {
+//        output = input/(1.+currentRatio);
+//    } else {
+//        output = input/(1.+currentRatio);
+//    }
+    
+    output = input*(1+log(currentRatio));
+    
+    return output;
+    
+    //return output*(1+log(ratio));
+}
+
+//asarasua - beg
+void maxiMultibandDyn::addCompressor(maxiDynParameters params, double cutoff){
+    maxiDyn comp;
+    comp.setAttack(params.attack);
+    comp.setRatio(params.ratio);
+    comp.setRelease(params.release);
+    comp.setThreshold(params.threshold);
+    
+    compressors.push_back(comp);
+    
+    if (cutoff != -1)
+        cutoffs.push_back(cutoff);
+    
+    filters.push_back(maxiFilter());
+}
+
+double maxiMultibandDyn::compress(double input){
+    double output(0);
+    
+    //1st band
+    double filtered = filters[0].LRlopass(input, cutoffs[0]);
+    output += compressors[0].compress(filtered);
+    
+    //Medium bands
+    for (size_t i = 1; i < compressors.size()-1; i++) {
+        filtered = filters[i].LRbandpass(input, cutoffs[i-1], cutoffs[i]);
+        output += filtered; //compressors[i].compress(filtered);
     }
     
-    return output*(1+log(ratio));
+    //Last band
+    if (compressors.size() >= 2) {
+        filtered = filters.end()[-1].LRhipass(input, cutoffs.end()[-1]);
+        output += filtered; //compressors.end()[-1].compress(filtered);
+    }
+    
+    return output;
 }
+
+void maxiMultibandDyn::setNumBands(int nbands){
+    filters.clear();
+    compressors.clear();
+    
+    for (size_t i = 0; i < nbands; i++) {
+        filters.push_back(maxiFilter());
+        compressors.push_back(maxiDyn());
+        if (i < nbands - 1) cutoffs.push_back(0);
+    }
+}
+
+void maxiMultibandDyn::setCompressorParameters(maxiDynParameters params, int bandIdx){
+    compressors[bandIdx].setAttack(params.attack);
+    compressors[bandIdx].setRatio(params.ratio);
+    compressors[bandIdx].setRelease(params.release);
+    compressors[bandIdx].setThreshold(params.threshold);
+}
+
+void maxiMultibandDyn::setCutoffFreq(double freq, int bandIdx){
+    //TODO put this inside maxiFilter
+    cutoffs[bandIdx] = freq;
+}
+
+//asarasua - end
 
 
 /* Lots of people struggle with the envelope generators so here's a new easy one.
@@ -1651,7 +1724,7 @@ void maxiEnv::setDecay(double decayMS) {
 }
 
 void maxiDyn::setAttack(double attackMS) {
-    attack = pow( 0.01, 1.0 / ( attackMS * maxiSettings::sampleRate * 0.001 ) );
+    attack = 1 - pow( 0.01, 1.0 / ( attackMS * maxiSettings::sampleRate * 0.001 ) );
 }
 
 void maxiDyn::setRelease(double releaseMS) {

@@ -45,6 +45,10 @@
 #ifdef _WIN32 //|| _WIN64
 #include <algorithm>
 #endif
+//asarasua - beg
+#include <array>
+#include <vector>
+//asarasua - end
 
 using namespace std;
 #ifndef PI
@@ -134,8 +138,10 @@ class maxiFilter {
     double gain;
     double input;
     double output;
-    double inputs[10];
-    double outputs[10];
+    //asarasua - beg
+    array<double, 10> inputs;
+    array<double, 10> outputs;
+    //asarasua-end
     double cutoff1;
     double x;//speed
     double y;//pos
@@ -143,7 +149,13 @@ class maxiFilter {
     double c;//filter coefficient
     
 public:
-    maxiFilter():x(0.0), y(0.0), z(0.0), c(0.0){};
+    maxiFilter():x(0.0), y(0.0), z(0.0), c(0.0)
+    //asarasua - beg
+    {
+        inputs.fill(0);
+        outputs.fill(0);
+    };
+    //asarasua - end
     double cutoff;
     double resonance;
     double lores(double input,double cutoff1, double resonance);
@@ -151,13 +163,14 @@ public:
     double bandpass(double input,double cutoff1, double resonance);
     double lopass(double input,double cutoff);
     double hipass(double input,double cutoff);
-    //new
+    //asarasua - beg
     double loshelf(double input, double gain, double cutoff, double slope);
     double hishelf(double input, double gain, double cutoff, double slope);
     double peakingEQ(double input, double gain, double freq, double resonance);
     double LRlopass(double input, double cutoff);
     double LRhipass(double input, double cutoff);
     double LRbandpass(double input, double cutoff1, double cutoff2);
+    //asarasua - end
 };
 
 class maxiMix  {
@@ -420,7 +433,30 @@ public:
     int attackphase,holdphase,releasephase;
 };
 
-//new
+//asarasua - beg
+typedef struct {
+    double ratio;
+    double threshold;
+    double attack;
+    double release;
+} maxiDynParameters;
+
+class maxiMultibandDyn{
+public:
+    double compress(double input);
+    //To use if parameters are known in setup
+    void addCompressor(maxiDynParameters params, double cutoff = -1); // compressors must be added in ascending freq order; if no cutoff freq is specified, then it's the last compressor (highest freq band)
+    void setNumBands(int nbands);
+    //For dynamics use
+    void setCompressorParameters(maxiDynParameters params, int bandIdx);
+    void setCutoffFreq(double freq, int bandIdx); //cutoff freq is the higher one for middle bands
+private:
+    vector<maxiDyn> compressors;
+    vector<maxiFilter> filters;
+    vector<double> cutoffs; //TODO put this inside maxiFilter
+};
+//asarasua - end
+
 
 class maxiEnv {
     
