@@ -1418,7 +1418,7 @@ double maxiDyn::gate(double input, double threshold, long holdtime, double attac
     return output;
 }
 
-
+//asarasua - TODO: make it work as compress method
 double maxiDyn::compressor(double input, double ratio, double threshold, double attack, double release) {
     
     if (fabs(input)>threshold && attackphase!=1){
@@ -1463,37 +1463,41 @@ double maxiDyn::compress(double input) {
     buffer.push_back(input);
     ssq += input*input;
     
-    double rms = sqrt(ssq / buffer.size());
-    
-    if (rms > threshold && attackphase != 1){
-        holdcount=0;
-        releasephase=0;
-        attackphase=1;
-        if(currentRatio==0) currentRatio=0.001;
+    if (threshold != 0.0) {
+        double rms = sqrt(ssq / buffer.size());
+        
+        if (rms > threshold && attackphase != 1){
+            holdcount=0;
+            releasephase=0;
+            attackphase=1;
+            if(currentRatio==0) currentRatio=0.001;
+        }
+        
+        if (attackphase==1 && currentRatio < 1.0) {
+            currentRatio*=(1+attack);
+        }
+        
+        if (currentRatio>=1.0 && attackphase != 2) {
+            attackphase=2;
+            currentRatio = 1.0;
+        }
+        
+        if (rms < threshold && releasephase != 1 && attackphase == 2) {
+            releasephase=1;
+            attackphase=0;
+        }
+        
+        if (releasephase==1 && currentRatio>0.001) {
+            currentRatio*=release;
+        }
+        
+        double instant_ratio = 1 + (ratio-1) * log10(9*currentRatio  + 1.);
+        double rms_output = pow(rms / threshold, 1. / (instant_ratio)) * threshold;
+        
+        output = input * rms_output / rms;        
+    } else {
+        output = input;
     }
-    
-    if (attackphase==1 && currentRatio < 1.0) {
-        currentRatio*=(1+attack);
-    }
-    
-    if (currentRatio>=1.0 && attackphase != 2) {
-        attackphase=2;
-        currentRatio = 1.0;
-    }
-    
-    if (rms < threshold && releasephase != 1 && attackphase == 2) {
-        releasephase=1;
-        attackphase=0;
-    }
-    
-    if (releasephase==1 && currentRatio>0.001) {
-        currentRatio*=release;
-    }
-    
-    double instant_ratio = 1 + (ratio-1) * log10(9*currentRatio  + 1.);
-    double rms_output = pow(rms / threshold, 1. / (instant_ratio)) * threshold;
-    
-    output = input * rms_output / rms;
     
     return output;
 }
@@ -1515,21 +1519,22 @@ void maxiMultibandDyn::addCompressor(maxiDynParameters params, double cutoff){
 
 double maxiMultibandDyn::compress(double input){
     double output(0);
+    double filtered;
     
     //1st band
-    double filtered = filters[0].LRlopass(input, cutoffs[0]);
+    filtered = filters[0].LRlopass(input, cutoffs[0]);
     output += compressors[0].compress(filtered);
     
     //Medium bands
     for (size_t i = 1; i < compressors.size()-1; i++) {
         filtered = filters[i].LRbandpass(input, cutoffs[i-1], cutoffs[i]);
-        output += filtered; //compressors[i].compress(filtered);
+        output += compressors[i].compress(filtered);
     }
     
     //Last band
     if (compressors.size() >= 2) {
         filtered = filters.end()[-1].LRhipass(input, cutoffs.end()[-1]);
-        output += filtered; //compressors.end()[-1].compress(filtered);
+        output += compressors.end()[-1].compress(filtered);
     }
     
     return output;
@@ -1746,6 +1751,11 @@ void maxiDyn::setRatio(double ratioF) {
     ratio = ratioF;
 }
 
+//asarasua - beg
+void maxiDyn::setRmsTime(double timeMS){
+    buffer.resize(timeMS * 0.001 * maxiSettings::sampleRate);
+}
+//asarasua - end
 
 double convert::mtof(int midinote) {
     

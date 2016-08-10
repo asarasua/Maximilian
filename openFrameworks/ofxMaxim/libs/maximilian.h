@@ -434,12 +434,15 @@ public:
     void setRelease(double releaseMS);
     void setThreshold(double thresholdI);
     void setRatio(double ratioF);
+    //asarasua - beg
+    void setRmsTime(double timeMS);
+    //asarasua - end
     long holdtime;
     long holdcount;
     int attackphase,holdphase,releasephase;
     //asarasua - beg
     double ssq;
-    vector<double> buffer;
+    vector<double> buffer; //circular buffer for rms computation
     //asarasua - end
 };
 
