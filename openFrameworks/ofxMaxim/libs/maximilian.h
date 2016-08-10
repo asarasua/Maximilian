@@ -411,6 +411,12 @@ class maxiDyn {
     
     
 public:
+    //asarasua - beg
+    maxiDyn(){
+        currentRatio = 0.001;
+        buffer.resize(maxiSettings::sampleRate / 3); //that'd be 1/3 second buffer
+    }
+    //asarasua - end
     //	double gate(double input, double threshold=0.9, long holdtime=1, double attack=1, double release=0.9995);
     //	double compressor(double input, double ratio, double threshold=0.9, double attack=1, double release=0.9995);
     double gate(double input, double threshold=0.9, long holdtime=1, double attack=1, double release=0.9995);
@@ -431,6 +437,10 @@ public:
     long holdtime;
     long holdcount;
     int attackphase,holdphase,releasephase;
+    //asarasua - beg
+    double ssq;
+    vector<double> buffer;
+    //asarasua - end
 };
 
 //asarasua - beg

@@ -1450,47 +1450,54 @@ double maxiDyn::compressor(double input, double ratio, double threshold, double 
     return output*(1+log(ratio));
 }
 
+//asarasua - beg
 double maxiDyn::compress(double input) {
     
-    if (fabs(input)>threshold && attackphase!=1){
+    //1st recalculate ssq
+    if (buffer.size() == buffer.capacity()) {
+        double oldest = buffer.front();
+        ssq -= oldest * oldest;
+        buffer.erase(buffer.begin());
+    }
+    
+    buffer.push_back(input);
+    ssq += input*input;
+    
+    double rms = sqrt(ssq / buffer.size());
+    
+    if (rms > threshold && attackphase != 1){
         holdcount=0;
         releasephase=0;
         attackphase=1;
-        if(currentRatio==0) currentRatio=0.01;
+        if(currentRatio==0) currentRatio=0.001;
     }
     
-    if (attackphase==1 && currentRatio < ratio) {
+    if (attackphase==1 && currentRatio < 1.0) {
         currentRatio*=(1+attack);
     }
     
-    if (currentRatio>=ratio) {
-        attackphase=0;
-        //releasephase=1;
+    if (currentRatio>=1.0 && attackphase != 2) {
+        attackphase=2;
+        currentRatio = 1.0;
     }
     
-    if (fabs(input) < threshold && releasephase!=1) {
+    if (rms < threshold && releasephase != 1 && attackphase == 2) {
         releasephase=1;
         attackphase=0;
     }
     
-    if (releasephase==1 && currentRatio>0.01) {
+    if (releasephase==1 && currentRatio>0.001) {
         currentRatio*=release;
     }
     
-//    if (input>0.) {
-//        output = input/(1.+currentRatio);
-//    } else {
-//        output = input/(1.+currentRatio);
-//    }
+    double instant_ratio = 1 + (ratio-1) * log10(9*currentRatio  + 1.);
+    double rms_output = pow(rms / threshold, 1. / (instant_ratio)) * threshold;
     
-    output = input*(1+log(currentRatio));
+    output = input * rms_output / rms;
     
     return output;
-    
-    //return output*(1+log(ratio));
 }
 
-//asarasua - beg
 void maxiMultibandDyn::addCompressor(maxiDynParameters params, double cutoff){
     maxiDyn comp;
     comp.setAttack(params.attack);
@@ -1724,11 +1731,11 @@ void maxiEnv::setDecay(double decayMS) {
 }
 
 void maxiDyn::setAttack(double attackMS) {
-    attack = 1 - pow( 0.01, 1.0 / ( attackMS * maxiSettings::sampleRate * 0.001 ) );
+    attack = 1 - pow( 0.001, 1.0 / ( attackMS * maxiSettings::sampleRate * 0.001 ) );
 }
 
 void maxiDyn::setRelease(double releaseMS) {
-    release = pow( 0.01, 1.0 / ( releaseMS * maxiSettings::sampleRate * 0.001 ) );
+    release = pow( 0.001, 1.0 / ( releaseMS * maxiSettings::sampleRate * 0.001 ) );
 }
 
 void maxiDyn::setThreshold(double thresholdI) {
