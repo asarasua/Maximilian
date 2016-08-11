@@ -1563,6 +1563,180 @@ void maxiMultibandDyn::setCutoffFreq(double freq, int bandIdx){
     cutoffs[bandIdx] = freq;
 }
 
+
+maxiReverb::maxiReverb() {
+    // Tie the components to their buffers
+    combL[0].setbuffer(bufcombL1,combtuningL1);
+    combR[0].setbuffer(bufcombR1,combtuningR1);
+    combL[1].setbuffer(bufcombL2,combtuningL2);
+    combR[1].setbuffer(bufcombR2,combtuningR2);
+    combL[2].setbuffer(bufcombL3,combtuningL3);
+    combR[2].setbuffer(bufcombR3,combtuningR3);
+    combL[3].setbuffer(bufcombL4,combtuningL4);
+    combR[3].setbuffer(bufcombR4,combtuningR4);
+    combL[4].setbuffer(bufcombL5,combtuningL5);
+    combR[4].setbuffer(bufcombR5,combtuningR5);
+    combL[5].setbuffer(bufcombL6,combtuningL6);
+    combR[5].setbuffer(bufcombR6,combtuningR6);
+    combL[6].setbuffer(bufcombL7,combtuningL7);
+    combR[6].setbuffer(bufcombR7,combtuningR7);
+    combL[7].setbuffer(bufcombL8,combtuningL8);
+    combR[7].setbuffer(bufcombR8,combtuningR8);
+    allpassL[0].setbuffer(bufallpassL1,allpasstuningL1);
+    allpassR[0].setbuffer(bufallpassR1,allpasstuningR1);
+    allpassL[1].setbuffer(bufallpassL2,allpasstuningL2);
+    allpassR[1].setbuffer(bufallpassR2,allpasstuningR2);
+    allpassL[2].setbuffer(bufallpassL3,allpasstuningL3);
+    allpassR[2].setbuffer(bufallpassR3,allpasstuningR3);
+    allpassL[3].setbuffer(bufallpassL4,allpasstuningL4);
+    allpassR[3].setbuffer(bufallpassR4,allpasstuningR4);
+    
+    // Set default values
+    allpassL[0].setfeedback(0.5f);
+    allpassR[0].setfeedback(0.5f);
+    allpassL[1].setfeedback(0.5f);
+    allpassR[1].setfeedback(0.5f);
+    allpassL[2].setfeedback(0.5f);
+    allpassR[2].setfeedback(0.5f);
+    allpassL[3].setfeedback(0.5f);
+    allpassR[3].setfeedback(0.5f);
+    setwet(initialwet);
+    setroomsize(initialroom);
+    setdry(initialdry);
+    setdamp(initialdamp);
+    setwidth(initialwidth);
+    setmode(initialmode);
+    
+    // Buffer will be full of rubbish - so we MUST mute them
+    mute();
+}
+
+void maxiReverb::mute()
+{
+    if (mode >= freezemode)
+        return;
+    
+    for (int j=0;j<numcombs;j++)
+    {
+        combL[j].mute();
+        combR[j].mute();
+    }
+    for (int k=0;k<numallpasses;k++)
+    {
+        allpassL[k].mute();
+        allpassR[k].mute();
+    }
+}
+
+double* maxiReverb::reverb(double input, double output[2]){
+    
+    output[0] = 0;
+    output[1] = 0;
+    double in = 2 * input * gain;
+    
+    // Accumulate comb filters in parallel
+    for(int i=0; i<numcombs; i++)
+    {
+        output[0] += combL[i].process(in);
+        output[1] += combR[i].process(in);
+    }
+    
+    // Feed through allpasses in series
+    for(int j=0; j<numallpasses; j++)
+    {
+        output[0] = allpassL[j].process(output[0]);
+        output[1] = allpassR[j].process(output[1]);
+    }
+    
+    // Calculate output REPLACING anything already there
+    output[0] = output[0]*wet1 + output[1]*wet2 + input*dry;
+    output[1] = output[1]*wet1 + output[0]*wet2 + input*dry;
+    
+    //out = out*wet + input*dry;
+    
+    // Increment sample pointers, allowing for interleave (if any)
+//    inputL += skip;
+//    inputR += skip;
+//    outputL += skip;
+//    outputR += skip;
+    return output;
+}
+
+void maxiReverb::update()
+{
+    // Recalculate internal values after parameter change
+    
+    int i;
+    
+    wet1 = wet*(width/2 + 0.5f);
+    wet2 = wet*((1-width)/2);
+    
+    if (mode >= freezemode)
+    {
+        roomsize1 = 1;
+        damp1 = 0;
+        gain = muted;
+    }
+    else
+    {
+        roomsize1 = roomsize;
+        damp1 = damp;
+        gain = fixedgain;
+    }
+    
+    for(i=0; i<numcombs; i++)
+    {
+        combL[i].setfeedback(roomsize1);
+        combR[i].setfeedback(roomsize1);
+    }
+    
+    for(i=0; i<numcombs; i++)
+    {
+        combL[i].setdamp(damp1);
+        combR[i].setdamp(damp1);
+    }
+}
+
+// The following get/set functions are not inlined, because
+// speed is never an issue when calling them, and also
+// because as you develop the reverb model, you may
+// wish to take dynamic action when they are called.
+
+void maxiReverb::setroomsize(float value)
+{
+    roomsize = (value*scaleroom) + offsetroom;
+    update();
+}
+
+void maxiReverb::setdamp(float value)
+{
+    damp = value*scaledamp;
+    update();
+}
+
+void maxiReverb::setwet(float value)
+{
+    wet = value*scalewet;
+    update();
+}
+
+void maxiReverb::setdry(float value)
+{
+    dry = value*scaledry;
+}
+
+void maxiReverb::setwidth(float value)
+{
+    width = value;
+    update();
+}
+
+void maxiReverb::setmode(float value)
+{
+    mode = value;
+    update();
+}
+
 //asarasua - end
 
 
