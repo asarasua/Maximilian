@@ -316,6 +316,10 @@ public:
     
     void setPosition(double newPos); // between 0.0 and 1.0
     
+    //asarasua - beg
+    double getPosition(); //between 0.0 and 1.0
+    //asarasua - end
+    
     double playUntil(double end);
     
     double play(double speed);
